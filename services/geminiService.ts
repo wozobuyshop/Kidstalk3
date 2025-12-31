@@ -2,6 +2,21 @@ import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { TranslationResult, ReplyResult } from "../types";
 
 /**
+ * Helper to safely parse JSON from Gemini response which might contain markdown formatting.
+ */
+function parseGeminiJson(responseText: string | undefined): any {
+  if (!responseText) throw new Error("Empty response from AI");
+  // Remove markdown code blocks if present
+  const cleaned = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error("Failed to parse JSON:", cleaned);
+    throw new Error("AI returned invalid data format");
+  }
+}
+
+/**
  * Transcribes audio and provides translations in one step using Gemini 3 Flash.
  */
 export async function processAudio(audioBase64: string, mimeType: string): Promise<TranslationResult> {
@@ -57,7 +72,7 @@ export async function processAudio(audioBase64: string, mimeType: string): Promi
     }
   });
 
-  return JSON.parse(response.text!);
+  return parseGeminiJson(response.text);
 }
 
 /**
@@ -105,7 +120,7 @@ export async function processReply(audioBase64: string, mimeType: string, target
     }
   });
 
-  return JSON.parse(response.text!);
+  return parseGeminiJson(response.text);
 }
 
 /**
@@ -135,7 +150,6 @@ export async function generateSpeech(text: string, langCode: string): Promise<st
     },
   });
 
-  // Iterate through all parts to find the inlineData audio part
   let audioData = "";
   if (response.candidates?.[0]?.content?.parts) {
     for (const part of response.candidates[0].content.parts) {
@@ -147,7 +161,7 @@ export async function generateSpeech(text: string, langCode: string): Promise<st
   }
 
   if (!audioData) {
-    throw new Error("No audio generated from the model. Please check the text input.");
+    throw new Error("No audio generated from the model.");
   }
   
   return audioData;
