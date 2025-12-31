@@ -1,0 +1,7 @@
+{
+  "name": "kidstalk4",
+  "description": "An educational app for Moroccan kids to learn English and communicate with family abroad using voice messages with built-in translation and speech-to-text features.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
