@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { AppLanguage, AppState, TranslationResult, ReplyResult } from './types';
+import { AppLanguage, AppState } from './types';
 import { UI_STRINGS } from './translations';
 import { processAudio, processReply, generateSpeech } from './services/geminiService';
 import { 
@@ -84,7 +84,8 @@ const App: React.FC = () => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64String = (reader.result as string).split(',')[1];
+        const result = reader.result as string;
+        const base64String = result.split(',')[1];
         resolve(base64String);
       };
       reader.onerror = reject;
@@ -93,7 +94,8 @@ const App: React.FC = () => {
   };
 
   const checkApiKey = () => {
-    if (!process.env.API_KEY || process.env.API_KEY === "undefined" || process.env.API_KEY === "") {
+    const key = process.env.API_KEY;
+    if (!key || key === "undefined" || key === "") {
       throw new Error("API_KEY_MISSING");
     }
   };
@@ -109,7 +111,7 @@ const App: React.FC = () => {
       console.error("Process Audio Error:", err);
       let errorMessage = "Oops! Something went wrong understanding the audio.";
       if (err.message === "API_KEY_MISSING") {
-        errorMessage = "API Key is missing. Please set 'API_KEY' in your Vercel/Environment settings.";
+        errorMessage = "API Key is missing. Please set 'API_KEY' in your Vercel settings.";
       }
       setState(prev => ({ ...prev, isLoading: false, error: errorMessage }));
     }
@@ -199,7 +201,7 @@ const App: React.FC = () => {
             {state.darkMode ? <Sun size={20} className="text-yellow-400" /> : <Moon size={20} className="text-indigo-600" />}
           </button>
           <div className="flex bg-white dark:bg-indigo-900 rounded-2xl p-1 shadow-md gap-0.5">
-            {[AppLanguage.ARABIC, AppLanguage.ENGLISH, AppLanguage.FRENCH].map(lang => (
+            {(Object.values(AppLanguage)).map(lang => (
               <button
                 key={lang}
                 onClick={() => setLanguage(lang)}

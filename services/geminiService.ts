@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { TranslationResult, ReplyResult } from "../types";
 
@@ -6,7 +5,8 @@ import { TranslationResult, ReplyResult } from "../types";
  * Transcribes audio and provides translations in one step using Gemini 3 Flash.
  */
 export async function processAudio(audioBase64: string, mimeType: string): Promise<TranslationResult> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY || "";
+  const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: {
@@ -57,14 +57,15 @@ export async function processAudio(audioBase64: string, mimeType: string): Promi
     }
   });
 
-  return JSON.parse(response.text);
+  return JSON.parse(response.text!);
 }
 
 /**
  * Specifically handles a child's reply in Darija/Arabic and translates to a target language.
  */
 export async function processReply(audioBase64: string, mimeType: string, targetLang: string): Promise<ReplyResult> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY || "";
+  const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: {
@@ -104,14 +105,15 @@ export async function processReply(audioBase64: string, mimeType: string, target
     }
   });
 
-  return JSON.parse(response.text);
+  return JSON.parse(response.text!);
 }
 
 /**
  * Generates child-friendly TTS audio using Gemini 2.5 Flash TTS.
  */
 export async function generateSpeech(text: string, langCode: string): Promise<string> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY || "";
+  const ai = new GoogleGenAI({ apiKey });
   const voices = {
     en: 'Kore', 
     ar: 'Kore', 
