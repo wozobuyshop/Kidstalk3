@@ -68,8 +68,8 @@ const App: React.FC = () => {
       mediaRecorder.start();
       setState(prev => ({ ...prev, isRecording: true, error: null }));
     } catch (err) {
-      console.error("Mic access error:", err);
-      setState(prev => ({ ...prev, error: "Could not access microphone." }));
+      console.error("Microphone access failed:", err);
+      setState(prev => ({ ...prev, error: "Please allow microphone access to use this app." }));
     }
   };
 
@@ -108,9 +108,11 @@ const App: React.FC = () => {
       const result = await processAudio(base64, blob.type);
       setState(prev => ({ ...prev, transcription: result, isLoading: false }));
     } catch (err: any) {
-      console.error("Gemini Error:", err);
-      let msg = "Something went wrong. Please try speaking again.";
-      if (err.message === "API_KEY_MISSING") msg = "API Key is missing from Vercel settings.";
+      console.error("Processing error:", err);
+      let msg = err.message || "I couldn't understand that audio. Please try speaking clearly.";
+      if (err.message === "API_KEY_MISSING") {
+        msg = "API Key is missing. Please check your Vercel Environment Variables.";
+      }
       setState(prev => ({ ...prev, isLoading: false, error: msg }));
     }
   };
@@ -124,7 +126,8 @@ const App: React.FC = () => {
       setState(prev => ({ ...prev, replyResult: result, isLoading: false }));
       playTTS(result.translatedReply, target);
     } catch (err: any) {
-      setState(prev => ({ ...prev, isLoading: false, error: "Reply failed. Try again." }));
+      console.error("Reply error:", err);
+      setState(prev => ({ ...prev, isLoading: false, error: "Failed to create your reply. Try again." }));
     }
   };
 
@@ -147,7 +150,7 @@ const App: React.FC = () => {
       source.connect(ctx.destination);
       source.start();
     } catch (err) {
-      console.error("TTS Error:", err);
+      console.error("Playback error:", err);
     }
   };
 
@@ -166,21 +169,21 @@ const App: React.FC = () => {
             <Languages size={24} className="text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-black uppercase">{strings.title}</h1>
-            <p className="hidden md:block text-[10px] opacity-75">{strings.subtitle}</p>
+            <h1 className="text-xl font-black uppercase tracking-tight">{strings.title}</h1>
+            <p className="hidden md:block text-[10px] opacity-75 font-medium">{strings.subtitle}</p>
           </div>
         </div>
 
         <div className="flex gap-2">
-          <button onClick={toggleDarkMode} className={`p-2 rounded-2xl ${state.darkMode ? 'bg-indigo-800' : 'bg-white shadow-md'}`}>
+          <button onClick={toggleDarkMode} className={`p-2 rounded-2xl transition-all shadow-md active:scale-95 ${state.darkMode ? 'bg-indigo-800' : 'bg-white'}`}>
             {state.darkMode ? <Sun size={20} className="text-yellow-400" /> : <Moon size={20} className="text-indigo-600" />}
           </button>
-          <div className="flex bg-white dark:bg-indigo-900 rounded-2xl p-1 shadow-md">
+          <div className="flex bg-white dark:bg-indigo-900 rounded-2xl p-1 shadow-md gap-0.5">
             {(Object.values(AppLanguage)).map(lang => (
               <button
                 key={lang}
                 onClick={() => setLanguage(lang)}
-                className={`w-9 h-9 flex items-center justify-center rounded-xl text-xs font-bold transition-all ${state.uiLanguage === lang ? 'bg-indigo-600 text-white' : 'text-indigo-600 dark:text-indigo-300'}`}
+                className={`w-9 h-9 flex items-center justify-center rounded-xl text-xs font-bold transition-all ${state.uiLanguage === lang ? 'bg-indigo-600 text-white shadow-sm' : 'text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-800'}`}
               >
                 {lang === AppLanguage.ARABIC ? 'ع' : lang.toUpperCase().substring(0, 2)}
               </button>
@@ -189,90 +192,166 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Main UI */}
+      {/* Main Content */}
       <main className="max-w-xl mx-auto px-6 pb-44 pt-4 space-y-8">
         
         {state.replyTargetLanguage ? (
-          <section className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-[2.5rem] p-8 shadow-2xl relative animate-in zoom-in-95">
-            <button onClick={() => setState(p => ({ ...p, replyTargetLanguage: null }))} className="absolute top-4 right-4 p-2 bg-white/20 rounded-full"><X size={20} /></button>
+          <section className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-[2.5rem] p-8 shadow-2xl relative animate-in zoom-in-95 duration-300">
+            <button onClick={() => setState(p => ({ ...p, replyTargetLanguage: null }))} className="absolute top-4 right-4 p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors">
+              <X size={20} />
+            </button>
+            
             <div className="flex flex-col items-center gap-6">
-              <h2 className="text-xl font-bold">{strings.speakDarija}</h2>
+              <h2 className="text-xl font-bold text-center">{strings.speakDarija}</h2>
               <button
                 onClick={state.isRecording ? stopRecording : () => startRecording(true)}
-                className={`w-32 h-32 rounded-full flex items-center justify-center shadow-2xl ${state.isRecording ? 'bg-red-500 animate-pulse' : 'bg-white text-indigo-600'}`}
+                className={`w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl relative ${state.isRecording ? 'bg-red-500 scale-110' : 'bg-white text-indigo-600'}`}
               >
-                {state.isRecording ? <Square size={48} fill="white" /> : <Mic size={48} />}
+                {state.isRecording ? (
+                  <Square size={48} className="fill-white" />
+                ) : (
+                  <Mic size={48} />
+                )}
+                {state.isRecording && <div className="absolute inset-0 animate-ping rounded-full border-4 border-red-400 opacity-75"></div>}
               </button>
               
               {state.replyResult && !state.isLoading && (
-                <div className="w-full space-y-4">
+                <div className="w-full space-y-4 animate-in fade-in slide-in-from-top-4">
                    <div className="bg-white/20 p-4 rounded-2xl border border-white/30">
                       <p className="text-xs font-bold opacity-70 uppercase mb-1">Translation</p>
                       <p className="text-xl font-bold ltr-force">{state.replyResult.translatedReply}</p>
                    </div>
-                   <button onClick={() => shareToWhatsApp(state.replyResult!.translatedReply)} className="w-full bg-green-500 py-4 rounded-2xl font-black flex items-center justify-center gap-2"><Send /> {strings.share}</button>
+                   <button 
+                     onClick={() => shareToWhatsApp(state.replyResult!.translatedReply)} 
+                     className="w-full bg-green-500 py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform"
+                   >
+                     <Send size={20} /> {strings.share}
+                   </button>
                 </div>
               )}
             </div>
           </section>
         ) : (
           <>
-            <section className="bg-indigo-900/10 dark:bg-indigo-900 rounded-[2.5rem] p-8 shadow-inner border-2 border-indigo-100 dark:border-indigo-800 text-center">
+            <section className="bg-indigo-900/10 dark:bg-indigo-900 rounded-[2.5rem] p-8 shadow-inner border-2 border-indigo-100 dark:border-indigo-800 text-center relative overflow-hidden">
               <button
                 onClick={state.isRecording ? stopRecording : () => startRecording(false)}
-                className={`w-36 h-36 mx-auto rounded-full flex items-center justify-center shadow-2xl transition-all ${state.isRecording ? 'bg-red-500 scale-110' : 'bg-indigo-600'}`}
+                className={`w-36 h-36 mx-auto rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl relative z-10 ${state.isRecording ? 'bg-red-500 scale-110' : 'bg-indigo-600 hover:bg-indigo-700'}`}
               >
-                {state.isRecording ? <Square size={48} fill="white" /> : <Mic size={56} className="text-white" />}
+                {state.isRecording ? <Square size={48} className="fill-white text-white" /> : <Mic size={56} className="text-white" />}
+                {state.isRecording && <div className="absolute inset-0 animate-ping rounded-full border-4 border-red-400 opacity-75"></div>}
               </button>
-              <h2 className="text-xl font-bold mt-6">{state.isRecording ? strings.recording : strings.tapToSpeak}</h2>
-              <label className="mt-4 inline-flex items-center gap-2 cursor-pointer text-sm font-bold text-indigo-500">
+              
+              <h2 className="text-xl font-bold mt-6 relative z-10">{state.isRecording ? strings.recording : strings.tapToSpeak}</h2>
+              <label className="mt-4 inline-flex items-center gap-2 cursor-pointer text-sm font-bold text-indigo-500 hover:text-indigo-600 transition-colors relative z-10">
                 <FileUp size={16} /> {strings.uploadAudio}
                 <input type="file" className="hidden" accept="audio/*" onChange={(e) => e.target.files?.[0] && handleProcessAudio(e.target.files[0])} />
               </label>
             </section>
 
-            {state.isLoading && <div className="text-center py-12"><Loader2 size={56} className="animate-spin text-indigo-500 mx-auto" /></div>}
+            {state.isLoading && (
+              <div className="flex flex-col items-center gap-4 py-12">
+                <Loader2 size={56} className="text-indigo-500 animate-spin" />
+                <p className="font-black text-indigo-500 animate-pulse tracking-widest uppercase text-xs">{strings.processing}</p>
+              </div>
+            )}
 
             {state.error && (
-              <div className="bg-red-50 p-8 rounded-3xl border-2 border-red-200 text-center space-y-4">
-                <AlertCircle size={48} className="text-red-500 mx-auto" />
-                <p className="text-red-700 font-bold">{state.error}</p>
-                <button onClick={() => setState(p => ({ ...p, error: null }))} className="bg-red-500 text-white px-8 py-3 rounded-xl font-black">{strings.retry}</button>
+              <div className="bg-red-50 dark:bg-red-950/30 p-8 rounded-3xl border-2 border-red-200 dark:border-red-900 text-center space-y-4 shadow-xl animate-in fade-in zoom-in-95">
+                <div className="bg-red-500 text-white p-3 rounded-full shadow-lg w-fit mx-auto">
+                  <AlertCircle size={32} />
+                </div>
+                <p className="text-red-700 dark:text-red-400 font-bold text-lg leading-tight">{state.error}</p>
+                <button 
+                  onClick={() => setState(p => ({ ...p, error: null }))} 
+                  className="bg-red-500 hover:bg-red-600 text-white px-10 py-3 rounded-2xl font-black shadow-lg transition-all active:scale-95"
+                >
+                  {strings.retry}
+                </button>
               </div>
             )}
 
             {state.transcription && !state.isLoading && (
-              <div className="grid gap-6">
+              <div className="grid gap-6 animate-in fade-in slide-in-from-bottom-6 duration-500">
                 <TranslationCard label={strings.original} text={state.transcription.originalText} langCode={state.transcription.detectedLanguage} onPlay={() => playTTS(state.transcription!.originalText, state.transcription!.detectedLanguage)} color="border-indigo-400" />
-                <TranslationCard label={strings.english} text={state.transcription.translations.en} langCode="en" onPlay={() => playTTS(state.transcription!.translations.en, 'en')} onReply={() => setState(p => ({ ...p, replyTargetLanguage: AppLanguage.ENGLISH }))} color="border-sky-400" showReply />
-                <TranslationCard label={strings.french} text={state.transcription.translations.fr} langCode="fr" onPlay={() => playTTS(state.transcription!.translations.fr, 'fr')} onReply={() => setState(p => ({ ...p, replyTargetLanguage: AppLanguage.FRENCH }))} color="border-violet-400" showReply />
+                
+                <TranslationCard 
+                  label={strings.english} 
+                  text={state.transcription.translations.en} 
+                  langCode="en" 
+                  onPlay={() => playTTS(state.transcription!.translations.en, 'en')} 
+                  onReply={() => setState(p => ({ ...p, replyTargetLanguage: AppLanguage.ENGLISH }))} 
+                  color="border-sky-400" 
+                  showReply 
+                />
+                
+                <TranslationCard 
+                  label={strings.french} 
+                  text={state.transcription.translations.fr} 
+                  langCode="fr" 
+                  onPlay={() => playTTS(state.transcription!.translations.fr, 'fr')} 
+                  onReply={() => setState(p => ({ ...p, replyTargetLanguage: AppLanguage.FRENCH }))} 
+                  color="border-violet-400" 
+                  showReply 
+                />
               </div>
             )}
           </>
         )}
       </main>
 
-      {/* Nav */}
-      <footer className="fixed bottom-6 left-0 right-0 px-6 max-w-xl mx-auto">
-        <div className="bg-white/95 dark:bg-indigo-900/95 backdrop-blur-md rounded-[2.5rem] p-3 shadow-2xl flex justify-around items-center border border-indigo-50 dark:border-indigo-800">
-          <div className="opacity-40"><Languages /></div>
-          <div className="bg-indigo-600 text-white p-3 rounded-2xl shadow-xl"><Mic /></div>
-          <div className="opacity-40"><MessageCircle /></div>
-        </div>
-      </footer>
+      {/* Navigation Bar */}
+      {!state.isRecording && !state.isLoading && !state.replyTargetLanguage && (
+        <footer className="fixed bottom-6 left-0 right-0 px-6 max-w-xl mx-auto z-40">
+          <div className="bg-white/95 dark:bg-indigo-900/95 backdrop-blur-md rounded-[2.5rem] p-3 shadow-2xl flex justify-around items-center border border-indigo-50 dark:border-indigo-800">
+            <div className="flex flex-col items-center gap-1 opacity-40 group cursor-not-allowed">
+              <Languages size={20} className="text-indigo-600 dark:text-indigo-400" />
+              <span className="text-[9px] font-black uppercase tracking-tighter">Learn</span>
+            </div>
+            <div className="flex flex-col items-center gap-1 text-indigo-600 dark:text-white group">
+              <div className="bg-indigo-600 dark:bg-white text-white dark:text-indigo-900 p-3 rounded-2xl shadow-xl active:scale-90 transition-transform">
+                <Mic size={24} />
+              </div>
+              <span className="text-[9px] font-black uppercase tracking-tighter">Speak</span>
+            </div>
+            <div className="flex flex-col items-center gap-1 opacity-40 group cursor-not-allowed">
+              <MessageCircle size={20} className="text-indigo-600 dark:text-indigo-400" />
+              <span className="text-[9px] font-black uppercase tracking-tighter">Chat</span>
+            </div>
+          </div>
+        </footer>
+      )}
     </div>
   );
 };
 
 const TranslationCard: React.FC<any> = ({ label, text, langCode, onPlay, onReply, showReply, color }) => {
-  const isArabic = langCode === 'ar' || /[\u0600-\u06FF]/.test(text);
+  const isArabic = langCode === 'ar' || /[\u0000-\u007F]/.test(text) === false;
   return (
-    <div className={`bg-white dark:bg-indigo-900/50 p-6 rounded-[2.5rem] shadow-xl border-l-[10px] ${color} transition-all`}>
-      <span className="text-[10px] font-black uppercase px-3 py-1 bg-indigo-900 text-white rounded-full">{label}</span>
-      <p className={`text-xl font-bold my-6 ${isArabic ? 'rtl-force text-right' : 'ltr-force text-left'}`}>{text}</p>
-      <div className="flex justify-between">
-        {showReply && <button onClick={onReply} className="flex items-center gap-2 bg-pink-500 text-white px-4 py-2 rounded-xl font-black text-xs"><Undo2 size={16}/> Reply</button>}
-        <button onClick={onPlay} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl font-black text-xs ml-auto"><Volume2 size={16}/> Listen</button>
+    <div className={`bg-white dark:bg-indigo-900/50 p-6 rounded-[2.5rem] shadow-xl border-l-[10px] ${color} group hover:shadow-2xl hover:-translate-y-1 transition-all border border-indigo-50 dark:border-transparent`}>
+      <span className="text-[10px] font-black uppercase px-4 py-1.5 bg-indigo-900 text-white rounded-full shadow-sm">{label}</span>
+      
+      <p className={`text-xl md:text-2xl font-bold my-8 leading-relaxed ${isArabic ? 'rtl-force text-right' : 'ltr-force text-left'}`}>
+        {text}
+      </p>
+      
+      <div className="flex justify-between items-center gap-2">
+        {showReply && (
+          <button 
+            onClick={onReply} 
+            className="flex items-center gap-2 bg-pink-500 hover:bg-pink-600 text-white px-5 py-3 rounded-2xl font-black text-xs shadow-lg active:scale-95 transition-all"
+          >
+            <Undo2 size={18}/> 
+            <span className="uppercase tracking-tighter">Reply</span>
+          </button>
+        )}
+        <button 
+          onClick={onPlay} 
+          className="flex items-center gap-2 bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl font-black text-xs shadow-lg active:scale-95 transition-all ml-auto"
+        >
+          <Volume2 size={18}/> 
+          <span className="uppercase tracking-tighter">Listen</span>
+        </button>
       </div>
     </div>
   );
